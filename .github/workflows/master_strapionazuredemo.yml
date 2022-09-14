@@ -1,51 +1,22 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
+FROM node:12-alpine
 
-name: Build and deploy container app to Azure Web App - strapionazuredemo
+ENV PORT 1337
+ENV HOST 0.0.0.0
+ENV NODE_ENV production
 
-on:
-  push:
-    branches:
-      - master
-  workflow_dispatch:
+# Create app directory
+RUN mkdir -p /usr/src/app
+WORKDIR /usr/src/app
 
-jobs:
-  build:
-    runs-on: 'ubuntu-latest'
+# Install app dependencies
+COPY package*.json /usr/src/app/
+COPY yarn.lock /usr/src/app/
+RUN yarn install
 
-    steps:
-    - uses: actions/checkout@v2
+# Bundle app source
+COPY . /usr/src/app
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
+RUN yarn build
+EXPOSE 1337
 
-    - name: Log in to registry
-      uses: docker/login-action@v1
-      with:
-        registry: https://mcr.microsoft.com//
-        username: ${{ secrets.AzureAppService_ContainerUsername_29be14655d1f4d27ae36a889a7e65984 }}
-        password: ${{ secrets.AzureAppService_ContainerPassword_bbcffb972131466095e450e25ccf4761 }}
-
-    - name: Build and push container image to registry
-      uses: docker/build-push-action@v2
-      with:
-        push: true
-        tags: mcr.microsoft.com//${{ secrets.AzureAppService_ContainerUsername_29be14655d1f4d27ae36a889a7e65984 }}/strapitest123:${{ github.sha }}
-        file: ./Dockerfile
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: 'production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-
-    steps:
-    - name: Deploy to Azure Web App
-      id: deploy-to-webapp
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: 'strapionazuredemo'
-        slot-name: 'production'
-        publish-profile: ${{ secrets.AzureAppService_PublishProfile_6bb2787328df40df8b05319960c0935e }}
-        images: 'mcr.microsoft.com//${{ secrets.AzureAppService_ContainerUsername_29be14655d1f4d27ae36a889a7e65984 }}/strapitest123:${{ github.sha }}'
+CMD [ "yarn", "start" ]
